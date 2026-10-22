@@ -97,12 +97,17 @@ jobs:
           mkdir -p dist
           go build -trimpath -ldflags="$version_ldflags" \
             -o "dist/qianuhub-xianyu-helper-server-linux-${GOARCH}-${APP_VERSION}.bin" ./cmd/server
+          # 首次部署需要独立安装器准备匹配版本的 Playwright driver、Chromium 和系统依赖。
+          go build -trimpath -ldflags='-s -w' \
+            -o "dist/qianuhub-xianyu-helper-browser-install-linux-${GOARCH}-${APP_VERSION}.bin" ./cmd/browser-install
 
       - name: 上传 Linux 服务端二进制
         uses: actions/upload-artifact@v7
         with:
           name: qianuhub-server-linux-${{ matrix.arch }}-${{ env.APP_VERSION }}
-          path: dist/qianuhub-xianyu-helper-server-linux-${{ matrix.arch }}-${{ env.APP_VERSION }}.bin
+          path: |
+            dist/qianuhub-xianyu-helper-server-linux-${{ matrix.arch }}-${{ env.APP_VERSION }}.bin
+            dist/qianuhub-xianyu-helper-browser-install-linux-${{ matrix.arch }}-${{ env.APP_VERSION }}.bin
           if-no-files-found: error
 
   publish:
@@ -143,6 +148,8 @@ jobs:
           expected_release_files=(
             "qianuhub-xianyu-helper-server-linux-amd64-$APP_VERSION.bin"
             "qianuhub-xianyu-helper-server-linux-arm64-$APP_VERSION.bin"
+            "qianuhub-xianyu-helper-browser-install-linux-amd64-$APP_VERSION.bin"
+            "qianuhub-xianyu-helper-browser-install-linux-arm64-$APP_VERSION.bin"
           )
           for release_file in "${expected_release_files[@]}"; do
             source_file="dist/artifacts/$release_file"
