@@ -28,15 +28,19 @@ jobs:
       - name: 校验标签、来源与版本顺序
         id: version
         shell: bash
+        env:
+          # 使用仓库实际默认分支校验发布来源，兼容默认分支名称不同的仓库。
+          RELEASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -Eeuo pipefail
           if [[ ! "$GITHUB_REF_NAME" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             echo "正式版本标签必须符合 v1.2.3 格式：$GITHUB_REF_NAME" >&2
             exit 1
           fi
-          git fetch origin main --no-tags
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "正式版本标签必须指向 main 已包含的提交。" >&2
+          git check-ref-format "refs/heads/$RELEASE_BRANCH"
+          git fetch --no-tags origin "+refs/heads/$RELEASE_BRANCH:refs/remotes/origin/$RELEASE_BRANCH"
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "refs/remotes/origin/$RELEASE_BRANCH"; then
+            echo "正式版本标签必须指向默认分支 $RELEASE_BRANCH 已包含的提交。" >&2
             exit 1
           fi
           newest_tag="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)"
@@ -87,7 +91,7 @@ jobs:
           path: dist/artifacts
           merge-multiple: true
 
-      - name: 校验桌面产物并生成校验和
+      - name: 校验安装包和服务端产物并生成校验和
         shell: bash
         env:
           APP_VERSION: ${{ needs.prepare.outputs.app_version }}
@@ -101,6 +105,8 @@ jobs:
           expected_release_files=(
             "qianuhub-xianyu-helper-linux-amd64-$APP_VERSION.tar.gz"
             "qianuhub-xianyu-helper-linux-arm64-$APP_VERSION.tar.gz"
+            "qianuhub-xianyu-helper-server-linux-amd64-$APP_VERSION.bin"
+            "qianuhub-xianyu-helper-server-linux-arm64-$APP_VERSION.bin"
             "QianuHub-Xianyu-Helper-Setup.exe"
             "QianuHub-Xianyu-Helper-$APP_VERSION-arm64.pkg"
             "QianuHub-Xianyu-Helper-$APP_VERSION-amd64.pkg"
@@ -127,7 +133,7 @@ jobs:
             exit 1
           fi
 
-          echo "准备发布的桌面产物："
+          echo "准备发布的安装包和服务端产物："
           find dist/release -maxdepth 1 -type f -printf '%f\n' | sort
           echo "准备发布的 Docker 摘要："
           find dist/digests -maxdepth 1 -type f -printf '%f\n' | sort

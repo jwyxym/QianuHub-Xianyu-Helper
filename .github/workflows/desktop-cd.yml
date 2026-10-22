@@ -172,12 +172,16 @@ jobs:
           cp packaging/linux/install.sh packaging/linux/uninstall.sh packaging/linux/qianuhub-xianyu-helper.service "$package_dir/"
           chmod +x "$package_dir/install.sh" "$package_dir/uninstall.sh"
           tar -C dist -czf "dist/qianuhub-xianyu-helper-linux-${{ matrix.arch }}-${APP_VERSION}.tar.gz" "$(basename "$package_dir")"
+          # 单独保留已嵌入前端的服务端可执行文件，供 Linux 服务器直接部署或更新。
+          cp -- "$package_dir/xianyu-server" "dist/qianuhub-xianyu-helper-server-linux-${{ matrix.arch }}-${APP_VERSION}.bin"
 
-      - name: 上传 Linux 安装包
+      - name: 上传 Linux 安装包和服务端二进制
         uses: actions/upload-artifact@v7
         with:
           name: qianuhub-xianyu-helper-linux-${{ matrix.arch }}-${{ env.APP_VERSION }}
-          path: dist/qianuhub-xianyu-helper-linux-${{ matrix.arch }}-${{ env.APP_VERSION }}.tar.gz
+          path: |
+            dist/qianuhub-xianyu-helper-linux-${{ matrix.arch }}-${{ env.APP_VERSION }}.tar.gz
+            dist/qianuhub-xianyu-helper-server-linux-${{ matrix.arch }}-${{ env.APP_VERSION }}.bin
           if-no-files-found: error
 
   windows:
